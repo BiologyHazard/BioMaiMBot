@@ -1,15 +1,17 @@
-from typing import Dict, List, Any, Optional
-import time
-import threading
-from collections import defaultdict
 import asyncio
-from .message import Message
+import threading
+import time
+from collections import defaultdict
+from typing import Any, Dict, List, Optional
+
 from ...common.database import Database
+from .message import Message
+
 
 class MessageStorage:
     def __init__(self):
         self.db = Database.get_instance()
-        
+
     async def store_message(self, message: Message, topic: Optional[str] = None) -> None:
         """存储消息到数据库"""
         try:
@@ -43,9 +45,9 @@ class MessageStorage:
                     "topic": topic,
                     "detailed_plain_text": message.detailed_plain_text,
                 }
-                
+
             self.db.db.messages.insert_one(message_data)
         except Exception as e:
-            print(f"\033[1;31m[错误]\033[0m 存储消息失败: {e}") 
+            print(f"\033[1;31m[错误]\033[0m 存储消息失败: {e}")
 
-# 如果需要其他存储相关的函数，可以在这里添加 
+# 如果需要其他存储相关的函数，可以在这里添加

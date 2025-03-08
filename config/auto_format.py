@@ -4,12 +4,13 @@ import sys
 from pathlib import Path
 import os
 
+
 def sync_configs():
     # 读取两个配置文件
     try:
         with open('bot_config_dev.toml', 'rb') as f:  # tomli需要使用二进制模式读取
             dev_config = tomli.load(f)
-        
+
         with open('bot_config.toml', 'rb') as f:
             prod_config = tomli.load(f)
     except FileNotFoundError as e:
@@ -38,6 +39,7 @@ def sync_configs():
     except Exception as e:
         print(f"错误：保存配置文件失败 - {e}")
         sys.exit(1)
+
 
 if __name__ == '__main__':
     # 确保在正确的目录下运行

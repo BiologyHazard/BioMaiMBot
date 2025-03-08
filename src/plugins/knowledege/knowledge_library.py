@@ -1,9 +1,12 @@
 import os
 import sys
+import time
+
 import numpy as np
 import requests
-import time
 from dotenv import load_dotenv
+
+from src.common.database import Database
 
 # 添加项目根目录到 Python 路径
 root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
@@ -15,7 +18,6 @@ if not os.path.exists(env_path):
     raise FileNotFoundError(f"配置文件不存在: {env_path}")
 load_dotenv(env_path)
 
-from src.common.database import Database
 
 # 从环境变量获取配置
 Database.initialize(
@@ -27,6 +29,7 @@ Database.initialize(
     auth_source=os.getenv("MONGODB_AUTH_SOURCE", "admin")
 )
 
+
 class KnowledgeLibrary:
     def __init__(self):
         self.db = Database.get_instance()
@@ -35,11 +38,11 @@ class KnowledgeLibrary:
         self.api_key = os.getenv("SILICONFLOW_KEY")
         if not self.api_key:
             raise ValueError("SILICONFLOW_API_KEY 环境变量未设置")
-        
+
     def _ensure_dirs(self):
         """确保必要的目录存在"""
         os.makedirs(self.raw_info_dir, exist_ok=True)
-        
+
     def get_embedding(self, text: str) -> list:
         """获取文本的embedding向量"""
         url = "https://api.siliconflow.cn/v1/embeddings"
@@ -52,21 +55,21 @@ class KnowledgeLibrary:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
-        
+
         response = requests.post(url, json=payload, headers=headers)
         if response.status_code != 200:
             print(f"获取embedding失败: {response.text}")
             return None
-            
+
         return response.json()['data'][0]['embedding']
-        
+
     def process_files(self):
         """处理raw_info目录下的所有txt文件"""
         for filename in os.listdir(self.raw_info_dir):
             if filename.endswith('.txt'):
                 file_path = os.path.join(self.raw_info_dir, filename)
                 self.process_single_file(file_path)
-                
+
     def process_single_file(self, file_path: str):
         """处理单个文件"""
         try:
@@ -74,23 +77,23 @@ class KnowledgeLibrary:
             if self.db.db.processed_files.find_one({"file_path": file_path}):
                 print(f"文件已处理过，跳过: {file_path}")
                 return
-                
+
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
-                
+
             # 按1024字符分段
             segments = [content[i:i+600] for i in range(0, len(content), 600)]
-            
+
             # 处理每个分段
             for segment in segments:
                 if not segment.strip():  # 跳过空段
                     continue
-                    
+
                 # 获取embedding
                 embedding = self.get_embedding(segment)
                 if not embedding:
                     continue
-                    
+
                 # 存储到数据库
                 doc = {
                     "content": segment,
@@ -98,34 +101,34 @@ class KnowledgeLibrary:
                     "file_path": file_path,
                     "segment_length": len(segment)
                 }
-                
+
                 # 使用文本内容的哈希值作为唯一标识
                 content_hash = hash(segment)
-                
+
                 # 更新或插入文档
                 self.db.db.knowledges.update_one(
                     {"content_hash": content_hash},
                     {"$set": doc},
                     upsert=True
                 )
-                
+
             # 记录文件已处理
             self.db.db.processed_files.insert_one({
                 "file_path": file_path,
                 "processed_time": time.time()
             })
-                
+
             print(f"成功处理文件: {file_path}")
-            
+
         except Exception as e:
             print(f"处理文件 {file_path} 时出错: {str(e)}")
-            
+
     def search_similar_segments(self, query: str, limit: int = 5) -> list:
         """搜索与查询文本相似的片段"""
         query_embedding = self.get_embedding(query)
         if not query_embedding:
             return []
-            
+
         # 使用余弦相似度计算
         pipeline = [
             {
@@ -176,9 +179,10 @@ class KnowledgeLibrary:
             {"$limit": limit},
             {"$project": {"content": 1, "similarity": 1, "file_path": 1}}
         ]
-        
+
         results = list(self.db.db.knowledges.aggregate(pipeline))
         return results
+
 
 # 创建单例实例
 knowledge_library = KnowledgeLibrary()
@@ -187,7 +191,7 @@ if __name__ == "__main__":
     # 测试知识库功能
     print("开始处理知识库文件...")
     knowledge_library.process_files()
-    
+
     # 测试搜索功能
     test_query = "麦麦评价一下僕と花"
     print(f"\n搜索与'{test_query}'相似的内容:")

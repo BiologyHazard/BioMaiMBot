@@ -1,19 +1,20 @@
-from typing import Dict, Any, List, Optional, Union, Tuple
-from openai import OpenAI
 import asyncio
-from functools import partial
-from .message import Message
-from .config import global_config
-from ...common.database import Database
 import random
 import time
+from functools import partial
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
-from .relationship_manager import relationship_manager
-from .prompt_builder import prompt_builder
-from .config import global_config
-from .utils import process_llm_response
 from nonebot import get_driver
+from openai import OpenAI
+
+from ...common.database import Database
 from ..models.utils_model import LLM_request
+from .config import global_config
+from .message import Message
+from .prompt_builder import prompt_builder
+from .relationship_manager import relationship_manager
+from .utils import process_llm_response
 
 driver = get_driver()
 config = driver.config
@@ -21,9 +22,9 @@ config = driver.config
 
 class ResponseGenerator:
     def __init__(self):
-        self.model_r1 = LLM_request(model=global_config.llm_reasoning, temperature=0.7,max_tokens=1000)
-        self.model_v3 = LLM_request(model=global_config.llm_normal, temperature=0.7,max_tokens=1000)
-        self.model_r1_distill = LLM_request(model=global_config.llm_reasoning_minor, temperature=0.7,max_tokens=1000)
+        self.model_r1 = LLM_request(model=global_config.llm_reasoning, temperature=0.7, max_tokens=1000)
+        self.model_v3 = LLM_request(model=global_config.llm_normal, temperature=0.7, max_tokens=1000)
+        self.model_r1_distill = LLM_request(model=global_config.llm_reasoning_minor, temperature=0.7, max_tokens=1000)
         self.db = Database.get_instance()
         self.current_model_type = 'r1'  # 默认使用 R1
 
@@ -42,16 +43,16 @@ class ResponseGenerator:
             current_model = self.model_r1_distill
 
         print(f"+++++++++++++++++{global_config.BOT_NICKNAME}{self.current_model_type}思考中+++++++++++++++++")
-        
+
         model_response = await self._generate_response_with_model(message, current_model)
-        
+
         if model_response:
             print(f'{global_config.BOT_NICKNAME}的回复是：{model_response}')
             model_response, emotion = await self._process_response(model_response)
             if model_response:
                 print(f"为 '{model_response}' 获取到的情感标签为：{emotion}")
-                valuedict={
-                'happy':0.5,'angry':-1,'sad':-0.5,'surprised':0.5,'disgusted':-1.5,'fearful':-0.25,'neutral':0.25
+                valuedict = {
+                    'happy': 0.5, 'angry': -1, 'sad': -0.5, 'surprised': 0.5, 'disgusted': -1.5, 'fearful': -0.25, 'neutral': 0.25
                 }
                 await relationship_manager.update_relationship_value(message.user_id, relationship_value=valuedict[emotion[0]])
 
@@ -62,13 +63,13 @@ class ResponseGenerator:
         """使用指定的模型生成回复"""
         sender_name = message.user_nickname or f"用户{message.user_id}"
         if message.user_cardname:
-            sender_name=f"[({message.user_id}){message.user_nickname}]{message.user_cardname}"
-        
+            sender_name = f"[({message.user_id}){message.user_nickname}]{message.user_cardname}"
+
         # 获取关系值
         relationship_value = relationship_manager.get_relationship(message.user_id).relationship_value if relationship_manager.get_relationship(message.user_id) else 0.0
         if relationship_value != 0.0:
             print(f"\033[1;32m[关系管理]\033[0m 回复中_当前关系值: {relationship_value}")
-        
+
         # 构建prompt
         prompt, prompt_check = prompt_builder._build_prompt(
             message_txt=message.processed_plain_text,
@@ -100,7 +101,7 @@ class ResponseGenerator:
         except Exception as e:
             print(f"生成回复时出错: {e}")
             return None
-        
+
         # 保存到数据库
         self._save_to_db(
             message=message,
@@ -112,13 +113,13 @@ class ResponseGenerator:
             reasoning_content=reasoning_content,
             # reasoning_content_check=reasoning_content_check if global_config.enable_kuuki_read else ""
         )
-        
+
         return content
 
     # def _save_to_db(self, message: Message, sender_name: str, prompt: str, prompt_check: str,
     #                 content: str, content_check: str, reasoning_content: str, reasoning_content_check: str):
     def _save_to_db(self, message: Message, sender_name: str, prompt: str, prompt_check: str,
-                content: str, reasoning_content: str,):
+                    content: str, reasoning_content: str,):
         """保存对话记录到数据库"""
         self.db.db.reasoning_logs.insert_one({
             'time': time.time(),
@@ -143,24 +144,24 @@ class ResponseGenerator:
             输出：
             '''
             content, _ = await self.model_v3.generate_response(prompt)
-            content=content.strip()
-            if content in ['happy','angry','sad','surprised','disgusted','fearful','neutral']:
+            content = content.strip()
+            if content in ['happy', 'angry', 'sad', 'surprised', 'disgusted', 'fearful', 'neutral']:
                 return [content]
             else:
                 return ["neutral"]
-            
+
         except Exception as e:
             print(f"获取情感标签时出错: {e}")
             return ["neutral"]
-    
+
     async def _process_response(self, content: str) -> Tuple[List[str], List[str]]:
         """处理响应内容，返回处理后的内容和情感标签"""
         if not content:
             return None, []
-        
+
         emotion_tags = await self._get_emotion_tags(content)
         processed_response = process_llm_response(content)
-        
+
         return processed_response, emotion_tags
 
 
