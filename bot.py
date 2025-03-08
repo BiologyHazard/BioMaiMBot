@@ -1,11 +1,25 @@
 import os
+import sys
+
 import nonebot
-from nonebot.adapters.onebot.v11 import Adapter
 from dotenv import load_dotenv
-from loguru import logger
+from nonebot.adapters.onebot.v11 import Adapter
+from nonebot.log import default_filter, logger
 
 '''彩蛋'''
-from colorama import init, Fore
+from colorama import Fore, init
+
+logger_format: str = (
+    "<g>{time:MM-DD HH:mm:ss}</g> "
+    "[<lvl>{level}</lvl>] "
+    "<c><u>{name}:{function}:{line}</u></c> | "
+    "{message}"
+)
+logger.remove()
+logger.add(sys.stderr,
+           level=0,
+           format=logger_format,
+           filter=default_filter)
 
 init()
 text = "多年以后，面对行刑队，张三将会回想起他2023年在会议上讨论人工智能的那个下午"
