@@ -175,7 +175,7 @@ class MessageManager:
             else:  # 如果不是message_thinking就只能是message_sending
                 print(f"\033[1;34m[调试]\033[0m 消息'{message_earliest.processed_plain_text}'正在发送中")
                 # 直接发，等什么呢
-                if message_earliest.update_thinking_time() < 30:
+                if message_earliest.update_thinking_time() < 60:
                     await message_sender.send_group_message(group_id, message_earliest.processed_plain_text, auto_escape=False)
                 else:
                     await message_sender.send_group_message(group_id, message_earliest.processed_plain_text, auto_escape=False, reply_message_id=message_earliest.reply_message_id)
@@ -197,7 +197,7 @@ class MessageManager:
 
                     try:
                         # 发送
-                        if msg.update_thinking_time() < 30:
+                        if msg.update_thinking_time() < 60:
                             await message_sender.send_group_message(group_id, msg.processed_plain_text, auto_escape=False)
                         else:
                             await message_sender.send_group_message(group_id, msg.processed_plain_text, auto_escape=False, reply_message_id=msg.reply_message_id)
