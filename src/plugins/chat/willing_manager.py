@@ -10,9 +10,9 @@ class WillingManager:
     async def _decay_reply_willing(self):
         """定期衰减回复意愿"""
         while True:
-            await asyncio.sleep(5)
+            await asyncio.sleep(15)
             for group_id in self.group_reply_willing:
-                self.group_reply_willing[group_id] = max(0, self.group_reply_willing[group_id] * 0.6)
+                self.group_reply_willing[group_id] = max(0, self.group_reply_willing[group_id] * 0.9)
 
     def get_willing(self, group_id: int) -> float:
         """获取指定群组的回复意愿"""
@@ -25,6 +25,7 @@ class WillingManager:
     def change_reply_willing_received(self, group_id: int, topic: str, is_mentioned_bot: bool, config, user_id: int = None, is_emoji: bool = False, interested_rate: float = 0) -> float:
         """改变指定群组的回复意愿并返回回复概率"""
         current_willing = self.group_reply_willing.get(group_id, 0)
+        current_willing += 0.10
 
         # print(f"初始意愿: {current_willing}")
         if is_mentioned_bot and current_willing < 1.0:
@@ -35,7 +36,7 @@ class WillingManager:
             print(f"被重复提及, 当前意愿: {current_willing}")
 
         if is_emoji:
-            current_willing *= 0.15
+            current_willing *= 0.35
             print(f"表情包, 当前意愿: {current_willing}")
 
         if interested_rate > 0.65:
@@ -52,10 +53,13 @@ class WillingManager:
         if group_id in config.talk_frequency_down_groups:
             reply_probability = reply_probability / 3.5
 
-        reply_probability = min(reply_probability, 1)
-        if reply_probability < 0:
-            reply_probability = 0
-        return reply_probability
+        reply_probability = max(min(reply_probability, 1), 0)
+        # return reply_probability
+
+        if is_mentioned_bot:
+            return 1.0
+        else:
+            return reply_probability
 
     def change_reply_willing_sent(self, group_id: int):
         """开始思考后降低群组的回复意愿"""
