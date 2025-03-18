@@ -83,10 +83,13 @@ class PromptBuilder:
         print(f"\033[1;32m[回忆耗时]\033[0m 耗时: {(end_time - start_time):.3f}秒")  # 输出耗时
 
         # 先禁用关系
-        if 0 > 30:
+        if relationship_value > 100:
             relation_prompt = "关系特别特别好，你很喜欢喜欢他"
             relation_prompt_2 = "热情发言或者回复"
-        elif 0 < -20:
+        elif relationship_value > 30:
+            relation_prompt = "关系不错，比较友好"
+            relation_prompt_2 = "发言以示友好"
+        elif relationship_value < -20:
             relation_prompt = "关系很差，你很讨厌他"
             relation_prompt_2 = "骂他"
         else:
